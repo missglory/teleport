@@ -1,0 +1,43 @@
+version: "3.8"
+
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - tiles
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./certs:/etc/ssl/certs
+
+  tiles:
+    image: ghcr.io/maplibre/martin
+    # For Arm64 - you have to build your own image from source https://github.com/maplibre/martin/issues/655#issuecomment-1540669505
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgres://postgres:abnf@db/db
+    depends_on:
+      - db
+    volumes:
+      - ./mbtiles/:/app
+    command: /app
+
+  db:
+    build:
+      context: ./db
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=db
+      - POSTGRES_USER=postgres
+      # - POSTGRES_HOST_AUTH_METHOD=trust
+      - POSTGRES_PASSWORD=abnf
+    volumes:
+      - ./db/db:/var/lib/postgresql/data
+      - ./db/initdb:/docker-entrypoint-initdb.d
